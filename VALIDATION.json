@@ -1,0 +1,507 @@
+{
+  "repository": "als79gur49/2024_3D_TeamProject",
+  "repository_id": "862361414",
+  "visibility": "private",
+  "branch": "main",
+  "commit": "81e231be42c696d0763b8c9700f17e54c16c86f5",
+  "local_original": null,
+  "tree_truncated": false,
+  "source_blob_count": 352,
+  "included_source_count": 30,
+  "included_cs_count": 28,
+  "excluded_source_count": 322,
+  "git_blob_sha1_verified_count": 30,
+  "sha256_verified_count": 30,
+  "forbidden_payload_count": 0,
+  "secret_pattern_hits": [],
+  "vendor_header_or_implementation_pattern_hits": [],
+  "non_utf8_source_paths": [
+    "Assets/Scripts/BestTimeMenu.cs",
+    "Assets/Scripts/Block/BlockCollider.cs",
+    "Assets/Scripts/Block/BlockInfo.cs",
+    "Assets/Scripts/Block/BlockManager.cs",
+    "Assets/Scripts/Block/PlayableMove.cs",
+    "Assets/Scripts/Block/TopBlockCollider.cs",
+    "Assets/Scripts/Button/ButtonNo.cs",
+    "Assets/Scripts/Button/NormalButton.cs",
+    "Assets/Scripts/Button/QuitButton.cs",
+    "Assets/Scripts/Button/SceneButton.cs",
+    "Assets/Scripts/ChangeScenes.cs",
+    "Assets/Scripts/ClickOnContent.cs",
+    "Assets/Scripts/InGameUI.cs",
+    "Assets/Scripts/SoundManager.cs",
+    "Assets/Scripts/Spawn/BuildingSpawner.cs",
+    "Assets/Scripts/StageManager.cs",
+    "Assets/Scripts/System/GameManager.cs",
+    "Assets/Scripts/System/LevelLock.cs",
+    "Assets/Scripts/etc_/CameraController.cs",
+    "Assets/Scripts/etc_/ReflectBlock.cs"
+  ],
+  "original_history_included": false,
+  "git_initialized": false,
+  "unity_tests_run": false,
+  "compilation_claimed": false,
+  "limits": [
+    "Heuristic secret scan does not guarantee absence of every secret",
+    "Excluded binary/asset payloads were not downloaded or content-scanned",
+    "Commit-audited changes documented; initial authorship of imported scripts and copyright ownership remain unverified; team public-posting consent and absence of externally borrowed code confirmed by user on 2026-10-01 KST, not independently legally verified",
+    "No independent legal clearance or new license is granted; public posting authorized by user",
+    "No runtime or compilation validation for this intentionally incomplete review snapshot"
+  ],
+  "generated_document_count": 5,
+  "final_file_count": 35,
+  "final_inventory_checked": true,
+  "gitignore_probe_passed": true,
+  "gitignore_allowed_probes": 3,
+  "gitignore_blocked_probes": 8,
+  "root_tree_sha": "dab46bf44ad59c4d9a194038338ad84c70325d2a",
+  "commit_tree_verification_endpoints": [
+    "branches/main",
+    "git/refs/heads/main",
+    "git/commits/81e231be42c696d0763b8c9700f17e54c16c86f5"
+  ],
+  "provenance_label_correction_needed": false,
+  "contribution_audit": {
+    "main_commit_count": 31,
+    "branch_count": 5,
+    "unique_commit_count": 37,
+    "commit_counts_are_not_contribution_percentages": true,
+    "source": "provided verified GitHub contribution audit"
+  },
+  "doc_only_update_checks": {
+    "unchanged_cs_count": 28,
+    "source_blob_and_sha256_reverified_count": 30,
+    "excluded_manifest_aggregated_count": 322,
+    "no_asset_payload": true,
+    "no_git_history": true,
+    "absolute_machine_path_removed": true
+  },
+  "generated_document_sha256": {
+    "README.md": "e7583059212fd31c05073ca1766888fc537e85d3323cad33689bd19922763242",
+    "CONTRIBUTIONS.md": "65d72ee9ee149240a150263d2fffe79861dac52616899a60dfbe8060bc152c4e",
+    "MANIFEST.csv": "dc7dafaa5a126abf4dbddc7c42a1dae995f47813350bce3d3c685310074fc612",
+    ".gitignore": "21ebdd3016f2fbe007e8aab59ab52e4288b88f9f69ca3ae0455e08cf5e60ac53"
+  },
+  "package_version_audit": {
+    "commit": "81e231be42c696d0763b8c9700f17e54c16c86f5",
+    "evidence_paths": [
+      "Packages/manifest.json",
+      "Packages/packages-lock.json",
+      "ProjectSettings/ProjectVersion.txt"
+    ],
+    "manifest_blob_sha1": "e5da37e481552767429f7a166f0be324756f2c50",
+    "lock_blob_sha1": "b4f482e6989bd295a1bf7a01d4656c60fe54d9f4",
+    "remote_manifest_and_lock_blob_verified": true,
+    "tree_truncated": false,
+    "dotween_presence": "no evidence in fixed-commit tree, package declarations/lock, selected source",
+    "dotween_version": null,
+    "asset_resource_versions": "unverified; UPM package version does not establish copied asset resource revision",
+    "packages": [
+      {
+        "package": "com.unity.2d.animation",
+        "declared_version": null,
+        "resolved_version": "9.0.3",
+        "source": "registry",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.2d.aseprite",
+        "declared_version": null,
+        "resolved_version": "1.0.0",
+        "source": "registry",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.2d.common",
+        "declared_version": null,
+        "resolved_version": "8.0.1",
+        "source": "registry",
+        "depth": 2
+      },
+      {
+        "package": "com.unity.2d.pixel-perfect",
+        "declared_version": null,
+        "resolved_version": "5.0.3",
+        "source": "registry",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.2d.psdimporter",
+        "declared_version": null,
+        "resolved_version": "8.0.2",
+        "source": "registry",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.2d.sprite",
+        "declared_version": null,
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.2d.spriteshape",
+        "declared_version": null,
+        "resolved_version": "9.0.2",
+        "source": "registry",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.2d.tilemap",
+        "declared_version": null,
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.2d.tilemap.extras",
+        "declared_version": null,
+        "resolved_version": "3.1.1",
+        "source": "registry",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.burst",
+        "declared_version": null,
+        "resolved_version": "1.8.7",
+        "source": "registry",
+        "depth": 3
+      },
+      {
+        "package": "com.unity.collab-proxy",
+        "declared_version": "2.5.1",
+        "resolved_version": "2.5.1",
+        "source": "registry",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.collections",
+        "declared_version": null,
+        "resolved_version": "1.2.4",
+        "source": "registry",
+        "depth": 2
+      },
+      {
+        "package": "com.unity.ext.nunit",
+        "declared_version": null,
+        "resolved_version": "1.0.6",
+        "source": "registry",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.feature.2d",
+        "declared_version": "2.0.1",
+        "resolved_version": "2.0.1",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.ide.rider",
+        "declared_version": "3.0.28",
+        "resolved_version": "3.0.28",
+        "source": "registry",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.ide.visualstudio",
+        "declared_version": "2.0.22",
+        "resolved_version": "2.0.22",
+        "source": "registry",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.mathematics",
+        "declared_version": null,
+        "resolved_version": "1.2.6",
+        "source": "registry",
+        "depth": 2
+      },
+      {
+        "package": "com.unity.test-framework",
+        "declared_version": "1.1.33",
+        "resolved_version": "1.1.33",
+        "source": "registry",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.textmeshpro",
+        "declared_version": "3.0.6",
+        "resolved_version": "3.0.6",
+        "source": "registry",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.timeline",
+        "declared_version": "1.7.6",
+        "resolved_version": "1.7.6",
+        "source": "registry",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.ugui",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.visualscripting",
+        "declared_version": "1.9.4",
+        "resolved_version": "1.9.4",
+        "source": "registry",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.ai",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.androidjni",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.animation",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.assetbundle",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.audio",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.cloth",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.director",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.imageconversion",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.imgui",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.jsonserialize",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.particlesystem",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.physics",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.physics2d",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.screencapture",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.subsystems",
+        "declared_version": null,
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 1
+      },
+      {
+        "package": "com.unity.modules.terrain",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.terrainphysics",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.tilemap",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.ui",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.uielements",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.umbra",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.unityanalytics",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.unitywebrequest",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.unitywebrequestassetbundle",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.unitywebrequestaudio",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.unitywebrequesttexture",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.unitywebrequestwww",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.vehicles",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.video",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.vr",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.wind",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      },
+      {
+        "package": "com.unity.modules.xr",
+        "declared_version": "1.0.0",
+        "resolved_version": "1.0.0",
+        "source": "builtin",
+        "depth": 0
+      }
+    ],
+    "no_current_installation_or_runtime_verification": true
+  },
+  "package_doc_update_checks": {
+    "unchanged_cs_count": 28,
+    "unchanged_source_and_context_sha256_count": 30,
+    "file_count": 35,
+    "no_excluded_asset_payload_added": true,
+    "only_readme_and_validation_modified": true
+  },
+  "user_publication_confirmation": {
+    "date": "2026-10-01",
+    "timezone": "Asia/Seoul",
+    "team_consented_to_public_posting_current_code_and_names": true,
+    "no_externally_borrowed_code_reported": true,
+    "source": "explicit user confirmation",
+    "independent_legal_verification": false,
+    "sole_authorship_established": false,
+    "new_license_granted": false,
+    "target_repository": "als79gur49/2024_3D_TeamProject-code-portfolio"
+  },
+  "publication_preparation_checks": {
+    "allowed_file_count": 35,
+    "unchanged_source_and_context_sha256_count": 30,
+    "unchanged_cs_count": 28,
+    "no_original_history": true,
+    "remote_upload_completed": false,
+    "blocker": "No repository creation connector; local gh token invalid. Repository creation/upload handed off without remote mutation."
+  }
+}
