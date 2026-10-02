@@ -9,77 +9,60 @@
 
 **이 저장소는 실행·빌드할 수 없는 코드 검토용 사본이다.** 씬·프리팹·음원·이미지와 Inspector 연결이 빠져 있다. 아래 설명은 공개된 소스의 호출과 조건을 정적으로 따라간 결과이며, 플레이 테스트 결과가 아니다. 코드 링크는 최초 공개 사본 커밋 [`fde125f`](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/README.md)에 고정했다.
 
-## 1. 블록 하나가 쌓이기까지
+## 1. 블록 하나의 생성부터 다음 생성까지
 
-**튜토리얼이 닫히면 블록이 생성되고, 좌우로 움직이는 블록을 클릭 또는 Enter로 떨어뜨린다.** 정상적으로 착지하면 블록을 멈추고 높이를 더한다. 생성기는 마지막 블록이 멈추거나 사라진 것을 확인한 뒤 다음 블록을 만든다.
+**입력으로 블록을 떨어뜨리면 충돌 처리가 착지 또는 파괴를 결정한다. 생성기는 마지막 블록이 정지 상태가 되거나 사라진 것을 확인해 다음 블록을 만든다.**
+
+아래는 이동형 프리팹의 `IsMoving`이 켜져 있고, 필요한 오브젝트 참조가 연결된 경우의 흐름이다.
 
 ```mermaid
 flowchart TD
-    T["튜토리얼 닫힘"] --> S["가중치로 블록 선택·생성<br/>BuildingSpawner"]
-    S --> M["좌우 이동과 경계 반사<br/>PlayableMove"]
-    M --> I["클릭 또는 Enter"]
-    I --> F["수직 낙하"]
-    F --> C{"충돌 결과"}
-    C -->|"정상 착지"| B["블록 정지·스택 등록<br/>높이와 카메라 갱신"]
-    C -->|"실패"| D["블록 파괴·체력 감소"]
-    B --> W["마지막 블록 정지 또는 소멸 확인"]
+    T["튜토리얼 오브젝트 비활성화"] --> W
+    W["생성 한도 내에서<br/>마지막 블록이 없거나 정지할 때까지 대기"] --> S["지연 후 블록 선택·생성<br/>이동 속도 설정"]
+    S --> M["좌우 이동 → 클릭 또는 Enter → 낙하"]
+    M -->|"블록 면 접촉"| C{"접촉 면·허용 개수 검사"}
+    C -->|"착지 승인"| L["정지 상태로 전환<br/>스택 등록·위치와 높이 갱신"]
+    C -->|"잘못된 접촉·수용 한도 도달"| D["파괴·체력 차감"]
+    M -->|"파괴 영역 진입"| D
+    L --> W
     D --> W
-    W -->|"생성 한도 미만"| S
 ```
 
-그림은 블록의 반복 흐름이다. 목표 높이와 체력에 따른 종료 판정은 4절에서 따로 설명한다. 코드에는 결과 UI 표시와 별개로 생성기를 종료하는 통합 상태 전환이 없으므로, 이 그림이 종료 후 모든 동작의 정지를 보장하지는 않는다.
+- **시작과 입력:** [BuildingSpawner.Start][spawner]가 튜토리얼 종료를 기다린 뒤 생성 반복을 시작한다. [PlayableMove][move]는 좌우로 이동하다 클릭 또는 Enter를 받으면 아래 방향 속도로 바꾼다. 튜토리얼을 닫는 입력은 클릭 또는 Space이며, UI가 끄는 오브젝트와 생성기가 기다리는 오브젝트의 연결은 씬 설정에 달려 있다.
+- **착지와 파괴:** [TopBlockCollider][top]는 착지를 승인하면 `StopBlock → BlockManager.PushBlock`을 호출한다. [BlockManager][blocks]가 위치와 높이를 갱신하고, 그 과정에서 목표 높이 도달 여부가 판정된다. 잘못된 면 접촉이나 파괴 영역 진입은 블록 파괴·체력 차감으로 이어진다. 접촉 목록이 이미 허용 수에 도달했다면 쌓인 블록도 함께 제거한다.
+- **다음 생성:** 충돌 처리기가 다음 블록을 직접 생성하지 않는다. `SpawnCoroutine`이 `lastBlock == null` 또는 `IsMoving == false`를 확인하고 `spawnDelay` 뒤에 생성한다. `maxSpawnCount`에 도달하면 생성 반복을 끝낸다.
 
-### 생성 조건과 가중치
+그림은 블록 생성의 반복 흐름이다. 목표 높이·체력에 따른 결과 UI와 생성 반복은 별도로 처리하며, 종료 조건은 4절에서 설명한다.
 
-[BuildingSpawner](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Spawn/BuildingSpawner.cs)의 `Start`는 `tutorialObject.activeSelf`가 꺼질 때까지 기다린다. 이후 `SpawnCoroutine`은 다음 순서를 반복한다.
+## 2. 충돌 면과 접촉 개수로 착지·파괴 결정
 
-1. 마지막 블록이 없거나 `PlayableMove.IsMoving == false`가 될 때까지 기다린다.
-2. `spawnDelay`만큼 기다린 뒤 프리팹과 생성 위치를 선택한다.
-3. 수평·수직 속도를 설정하고 생성 횟수를 늘린다.
-4. `maxSpawnCount`에 도달하면 반복을 끝낸다.
+[BlockCollider][collider]의 공통 조건은 **서로 다른 블록이며, 상대는 이동하면서 낙하 중이고, 자신은 그 상태가 아닐 것**이다. 보조 함수 `IsFalling`은 `IsMoving && IsFalling`을 반환하므로 자신이 반드시 정지 상태여야 하는 것은 아니다.
 
-`Building.Chance`는 선택 가중치다. `CalculateChance`에서 누적합을 `Rate`에 저장하고, `GetRandomIndex`가 난수보다 큰 첫 누적값을 고른다. 실제 블록 종류·가중치·생성 위치·횟수는 Inspector 자료가 없어서 확인할 수 없다. 최대 생성 횟수에 도달한 뒤의 별도 성공·실패 처리는 구현되어 있지 않다.
-
-### 이동에서 낙하로 전환
-
-[PlayableMove](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/PlayableMove.cs)는 `IsMoving`과 `IsFalling`으로 이동 상태를 구분한다.
-
-- 수평 이동: `MovingHorizontal`이 임의의 좌우 방향으로 속도를 주고, 블록을 메인 카메라의 자식으로 둔다.
-- 경계 반사: [ReflectBlock](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/ReflectBlock.cs)이 이름이 `Sprite`인 충돌 오브젝트를 확인해 부모의 `HorizontalReflect`를 호출한다. 아직 낙하하지 않는 블록만 수평 속도를 반전한다.
-- 낙하: 클릭 또는 Enter 입력으로 `IsFalling = true`가 되고, `MovingVertical`이 아래 방향 속도를 준다. 이때 카메라의 자식 관계를 해제한다.
-- 착지: `StopBlock`이 `IsMoving = false`, `rigid.isKinematic = true`로 바꾸고, 이후 `Update`에서 속도를 0으로 만든다.
-
-튜토리얼을 닫는 입력은 [InGameUI](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/InGameUI.cs)의 클릭 또는 Space다. 낙하 입력의 Enter와 구분해야 한다. `isAccelerating` 분기는 비어 있어 가속 낙하는 구현된 기능으로 보지 않는다.
-
-## 2. 충돌 위치에 따라 착지와 실패를 나누는 구조
-
-[BlockCollider](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/BlockCollider.cs)가 공통 검사와 충돌 방향 분기를 맡고, 위·옆·아래 콜라이더가 세부 동작을 담당한다.
-
-공통 조건은 **서로 다른 블록이며, 상대는 이동 중 낙하 상태이고, 자신은 그 상태가 아닐 것**이다. 코드의 `IsFalling` 보조 함수는 `IsMoving && IsFalling`을 반환한다. 따라서 주석의 “고정된 블록”은 실제 조건보다 좁은 표현이다.
+아래 그림은 상속 관계다. 각 파생 클래스가 물려받은 `OnTriggerEnter2D`에서 공통 조건을 검사하고, **상대 면**에 맞는 override를 실행한다.
 
 ```mermaid
-flowchart TD
-    C["공통 충돌 검사<br/>BlockCollider"] --> T["위쪽 면<br/>TopBlockCollider"]
-    C --> S["옆쪽 면<br/>SideBlockCollider"]
-    C --> B["아래쪽 면<br/>BottomBlockCollider"]
-    T -->|"상대 아래쪽 면·수용 한도 이내"| A["착지 승인<br/>정지·높이 갱신"]
-    T -->|"상대 아래쪽 면·수용 한도 초과"| X["쌓인 블록 전체 붕괴<br/>상대 파괴·체력 감소"]
-    T -->|"상대 옆쪽 면"| F["상대 블록 파괴<br/>체력 감소"]
-    S -->|"상대 아래쪽 또는 옆쪽 면"| F
-    B --> N["추가 처리 없음<br/>빈 override"]
+classDiagram
+    BlockCollider <|-- TopBlockCollider
+    BlockCollider <|-- SideBlockCollider
+    BlockCollider <|-- BottomBlockCollider
 ```
 
-- [TopBlockCollider](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/TopBlockCollider.cs): `collidedBlocks.Count`와 `BlockInfo.MaxInteractableBlock`을 비교한다. 한도 안이면 중복 등록을 검사한 뒤 상대를 멈추고 `BlockManager.PushBlock`을 호출한다. 이어 성공 효과음과 카메라 갱신을 요청한다.
-- 한도를 초과하면 `BlockManager.DestroyAllBlocks`로 쌓인 블록 전체를 제거하고, 새로 부딪힌 블록도 파괴한 뒤 체력을 1 줄인다. 한도는 전체 건물의 최대 층수가 아니라 **해당 블록 위에 접촉해 있는 블록 수**를 기준으로 한다.
-- [SideBlockCollider](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/SideBlockCollider.cs): 상대의 아래쪽 또는 옆쪽 면과 부딪히면 상대 블록을 파괴하고 체력을 1 줄인다.
-- [BottomBlockCollider](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/BottomBlockCollider.cs): 상속 구조에 포함되지만 두 충돌 처리 override는 비어 있다.
-- `PrevGameObject`와 `collidedBlocks`는 이미 처리한 상대의 중복 처리를 줄이기 위한 장치다. `OnTriggerExit2D`는 위쪽 면의 접촉 목록과 개수를 줄인다.
+| 자신 면 | 상대 면 | 조건과 처리 |
+| --- | --- | --- |
+| 위 | 아래 | 접촉 목록 수가 허용 수보다 작고 중복이 아니면 착지 등록 |
+| 위 | 아래 | 접촉 목록 수가 이미 허용 수 이상이고 새 상대이면 쌓인 블록 전체와 상대를 파괴하고 체력 차감 |
+| 위 | 옆 | 중복이 아니면 상대 파괴·체력 차감 |
+| 옆 | 아래·옆 | 중복이 아니면 상대 파괴·체력 차감 |
+| 아래 | 아래·옆 | override에 추가 처리 없음 |
+| 모든 면 | 위 | 공통 처리에서 실행하는 동작 없음 |
 
-별도로 [DestroyBlock](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/DestroyBlock.cs)은 파괴 영역에 들어온 이동 중 블록의 체력을 차감하고 파괴를 요청한다. 이 경로에는 위 충돌 클래스와 같은 중복 상대 기록이 없으므로, 실제 프리팹의 콜라이더 구성에 따른 호출 횟수는 코드만으로 확정할 수 없다.
+위쪽 처리는 [TopBlockCollider][top], 옆쪽 처리는 [SideBlockCollider][side]에 구현되어 있고 [BottomBlockCollider][bottom]의 두 override는 비어 있다. 허용 수 비교는 `collidedBlocks.Count < MaxInteractableBlock`이며 **해당 위쪽 콜라이더의 접촉 목록 수**가 기준이다. `PrevGameObject`와 목록으로 중복 처리를 줄이고, `OnTriggerExit2D`에서 목록과 개수를 줄인다.
 
-## 3. 쌓인 높이와 화면을 함께 갱신하기
+파괴 영역의 [DestroyBlock][destroy]은 이동 중 블록을 파괴하고 체력을 차감한다. 중복 상대 기록이 없어 실제 호출 횟수는 콜라이더 구성에 따라 달라질 수 있다.
 
-[BlockManager](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/BlockManager.cs)는 정적 `Stack<GameObject>`에 착지한 블록을 보관한다. 물리 시뮬레이션만으로 쌓인 높이를 재는 대신, 블록에 설정된 정수 높이와 위치 보정을 함께 사용한다.
+## 3. 착지 등록에서 높이·카메라 갱신까지
+
+착지가 승인되면 `StopBlock`으로 정지 상태를 설정하고 [BlockManager.PushBlock][blocks]을 호출한다. **정적 스택 등록 → 이전 높이로 위치 보정 → 높이 재계산** 순서다.
 
 ```mermaid
 sequenceDiagram
@@ -95,56 +78,65 @@ sequenceDiagram
     alt 목표 사용 중이며 목표 이상
         S->>U: 클리어 처리
     end
+    Note right of T: 성공 효과음 요청
     T->>C: 새 카메라 목표 위치 설정
 ```
 
-`PushBlock`의 순서는 등록 → 위치 보정 → 높이 재계산이다. 위치는 갱신 전 `BlocksHeight * 0.1f - 5`를 세로 좌표로 사용한다. `SetBlocksHeight`는 기반 높이 **10**에 각 [BlockInfo.Height](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/BlockInfo.cs)를 더하고, 그 값을 `StageManager.CurrentHeight`에 전달한다. 이 수치는 코드 내부 높이 단위이며 실제 미터 단위로 단정하지 않는다.
+- **높이:** 새 블록의 y는 갱신 전 `BlocksHeight * 0.1f - 5`다. 기반값 **10**에 각 [BlockInfo.Height][info]를 더해 `StageManager.CurrentHeight`에 전달한다. 실제 미터로 확인된 값은 아니다.
+- **화면 이동:** [CameraController][camera]는 블록 수가 `blockLimit`보다 적으면 설정된 `originPosition.position.y`, 그 이상이면 스택 최상단 높이와 보정값을 목표로 삼는다. x=0, z=-10을 유지하고 y를 `Mathf.Lerp`로 보간한다. [BackgroundFollowing][background]은 카메라의 세로 이동량에 추종 비율을 곱해 배경을 움직인다.
+- **전체 붕괴:** 스택을 비우고 각 블록에 동일한 0.3초 지연 파괴를 요청한다. 높이·카메라 목표를 갱신하고, 생성 코루틴은 0.7초 뒤 재시작해 대기 조건과 `spawnDelay`를 다시 거친다. `StageManager.Awake`는 스테이지 시작 시 스택을 초기화한다.
 
-전체 붕괴 시에는 다음 생성 코루틴을 0.7초 지연시키고, 스택을 비우면서 블록마다 0.3초 지연 파괴를 요청한다. 높이와 카메라 목표도 다시 계산한다. `StageManager.Awake`는 스테이지 시작 때 이 정적 스택을 초기화한다.
+높이 판정은 `PushBlock` 호출 안에서 실행되므로, 클리어 UI가 성공 효과음·카메라 요청보다 먼저 켜질 수 있다.
 
-[CameraController](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/CameraController.cs)는 쌓인 개수가 `blockLimit`보다 적으면 원점, 그 이상이면 스택 최상단 위치에 보정값을 더한 높이를 목표로 삼는다. 매 프레임 `Mathf.Lerp`로 이동한다. [BackgroundFollowing](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/BackgroundFollowing.cs)은 카메라의 세로 이동량에 각 배경의 추종 비율을 곱해 하늘과 도시를 이동시킨다.
+## 4. 결과 판정과 기록 저장
 
-## 4. 성공·실패에서 기록과 다음 스테이지로
+[StageManager][stage]는 프로퍼티 setter에서 결과를 판정한다. 체력 초기값은 3이며, [InGameUI][ui]가 체력 이벤트를 구독·해제하고 HP 이미지를 갱신한다.
 
-[StageManager](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/StageManager.cs)는 높이와 체력의 프로퍼티 setter에서 판정한다.
-
-| 변경되는 값 | 조건과 후속 처리 |
+| 변경되는 값 | 조건과 처리 |
 | --- | --- |
-| `CurrentHeight` | `targetOnOffSwitch`가 켜져 있고 `targetHeight` 이상이면 `InGameUI.gameClear` 호출 |
-| `CurrentHealth` | 변경할 때마다 `OnHealthChanged` 이벤트 발생. 0 이하이면 `InGameUI.gameOver` 호출 |
+| `CurrentHeight` | `targetOnOffSwitch`가 켜져 있고 목표 높이 이상이면 `gameClear` 호출 |
+| `CurrentHealth` | `OnHealthChanged` 이벤트 발생. 0 이하이면 `gameOver` 호출 |
 
-체력 초기값은 3이다. [InGameUI](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/InGameUI.cs)는 활성화 때 체력 이벤트를 구독하고 비활성화 때 해제한다. 이벤트를 받으면 현재 체력에 맞춰 HP 이미지를 켜고 끈다.
+### 클리어와 메뉴 조회
 
-클리어 흐름은 다음과 같다.
+`gameClear`의 순서는 **타이머 정지 → 최고 기록 저장 → 클리어 UI와 시간 표시 → GameManager 요청**이다. `SaveBestTime`은 더 빠른 기록만 `BestTime_{stageIndex}`에 저장한다.
 
-1. [Timer](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/System/Timer.cs)를 멈추고 클리어 시간을 표시한다.
-2. 이전 기록보다 빠를 때만 `BestTime_{stageIndex}` 키에 시간을 저장한다.
-3. [GameManager.StageClear](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/System/GameManager.cs)가 클리어 표시와 다음 스테이지 해제를 요청한다.
-4. [LevelLock](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/System/LevelLock.cs)이 `levelReached`를 PlayerPrefs에 저장한다. 스테이지 메뉴 초기화 때 이 값을 읽어 버튼·잠금·체크 표시를 구성한다.
-5. [BestTimeMenu.cs의 BestTimeDisplay](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/BestTimeMenu.cs)는 `BestTime_{i}`를 읽어 각 스테이지 최고 기록을 표시한다.
+[GameManager.StageClear][game]는 연결된 [LevelLock][lock]에 클리어 표시를 요청한다. `stageIndex >= levelReached`이면 다음 번호를 `levelReached`에 저장하도록 요청한다.
 
-실패 시에는 타이머를 멈추고 게임 오버 UI를 연다. 추가로 `BlockInfo.DestroyBlock`은 자식 스프라이트 이름이 **`Object_00_02`**이면 체력을 0으로 설정한다. 특정 블록이 파괴되면 즉시 실패하는 규칙이 스프라이트 이름에 연결되어 있다. 실제 자산의 외형은 이 사본으로 확인하지 않았다.
+메뉴에서는 별도로 `InitializeStages`가 저장값으로 버튼·잠금·체크를 구성하고, [BestTimeDisplay.Start][best]가 최고 기록을 읽는다. 이는 클리어 호출의 직접적인 다음 단계가 아니다.
 
-## 5. 사운드와 씬 연결
+### 실패와 종료 이후
 
-[SoundManager](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/SoundManager.cs)는 씬 전환 후에도 유지되는 싱글턴이다. Inspector에 설정된 이름·클립 목록에서 소리를 찾아 BGM용 AudioSource와 효과음용 AudioSource로 나눠 재생한다. 볼륨은 AudioMixer의 Master/BGM/Effect 파라미터로 조절한다.
+`gameOver`는 타이머를 멈추고 실패 UI를 연다. [BlockInfo.DestroyBlock][info]은 자식 스프라이트 이름이 `Object_00_02`이면 체력을 0으로 만든다. 실제 외형은 확인하지 않았다.
 
-- 정상 착지: `TopBlockCollider`에서 `Success` 효과음 요청
-- 파괴: `BlockInfo`에서 `Fail` 효과음 요청. 효과음이 재생 중이면 볼륨 인자를 0.4로 낮춘다.
-- 씬별 음악: [SceneBGMInitialize](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/SceneBGMInitialize.cs)가 이전·현재 빌드 인덱스를 비교한다. 둘 다 1 이하인 경우에는 음악을 바꾸지 않고, 그 외에는 설정된 이름의 BGM을 재생한다.
-- 버튼 전환: [SceneButton](https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Button/SceneButton.cs)이 효과음을 재생하고 클립 길이 × 배율만큼 기다린 뒤 `ChangeScenes.Load`를 호출한다.
+결과 UI가 켜지고 EventSystem이 있으면 [PlayableMove.Update][move]는 낙하 입력을 처리하지 않는다. 생성 코루틴·전체 물리를 멈추는 처리와 중복 종료 판정 가드는 없다.
 
-씬의 빌드 인덱스·음원 이름·AudioMixer 연결은 제외된 설정에 의존한다. 이 코드만으로 실제 화면 전환 순서나 음원을 복원할 수는 없다.
+`StopBlock`은 `IsMoving = false`, `rigid.isKinematic = true`만 설정한다. 속도 0 대입은 별도 `Update` 경로에 있으며, 위 UI 조건에서 포인터가 UI 밖이면 그 전에 return한다. **착지 후 항상 속도가 0이 된다고 보장할 수 없다.** 실제 움직임은 플레이 테스트하지 않았다.
 
-## 6. 구조를 읽을 때 주의할 점
+## 5. 생성·입력·사운드의 구현 세부
 
-이 프로젝트의 핵심은 **생성 코루틴, 두 이동 상태값, 방향별 충돌 상속, 정적 블록 스택, 프로퍼티 기반 판정**이 이어지는 구조다. 높이는 직접 호출로 전달하고, 체력 UI만 이벤트로 갱신한다. 모든 기능이 이벤트 기반으로 분리된 구조는 아니다.
+### 블록 선택과 이동
 
-- `gameClear`와 `gameOver`는 타이머와 UI를 처리하지만 생성기 중지나 전체 물리 정지를 직접 수행하지 않는다. 목표 판정에도 “이미 종료됨”을 기억하는 별도 가드가 없다.
-- `Timer`는 초기부터 시간을 더한다. 생성기의 튜토리얼 대기와 타이머 시작이 직접 연결되어 있지는 않다. 실제 오브젝트 활성 시점은 씬 확인이 필요하다.
-- `PlayableMove`는 UI·Rigidbody2D, 충돌 클래스는 `MainBlock`·자식 콜라이더, 카메라는 스택과 메인 카메라 구성에 의존한다. Inspector 참조가 없거나 잘못되면 같은 흐름이 성립한다고 보장할 수 없다.
-- 일부 원본 파일은 UTF-8이 아니다. 도구나 에디터에서 한글 주석이 깨져 보일 수 있으며, 이 문서 작업에서는 소스 인코딩·개행·코드를 바꾸지 않았다.
-- `PlayableMove.cs`와 `StageManager.cs`는 공동 수정 파일이다. UI·메뉴·시스템 반입 커밋의 작성자만으로 초기 구현자를 확정하지 않는다. 개인 담당과 팀 전체 구조는 [기여 기록](CONTRIBUTIONS.md)에서 구분한다.
+[BuildingSpawner][spawner]는 `Chance`의 누적합을 `Rate`에 저장하고 난수보다 큰 첫 누적값으로 프리팹을 고른다. 위치를 선택해 생성한 뒤 수평·수직 속도를 설정한다. 실제 종류·가중치·위치·횟수는 미확인이다. 생성 한도 도달 후의 별도 성공·실패 처리는 없다.
+
+[PlayableMove][move]는 `IsMoving && !IsFalling`일 때 임의의 좌우 속도를 주고 블록을 메인 카메라의 자식으로 둔다. [ReflectBlock][reflect]은 이름이 `Sprite`인 충돌 오브젝트의 부모에서 `HorizontalReflect`를 호출하며, 이동 중이고 아직 낙하하지 않는 블록만 반사한다.
+
+낙하 입력은 `IsFalling`을 켜고 카메라의 자식 관계를 해제한다. `isAccelerating`이 꺼져 있으면 아래 방향 속도를 설정하며, 켜진 분기는 비어 있다. 가속 낙하는 구현된 기능으로 보지 않는다.
+
+### 효과음과 씬 연결
+
+[SoundManager][sound]는 씬 전환 후에도 유지된다. 이름·클립 목록에서 소리를 찾아 BGM과 효과음 AudioSource로 나눠 재생하고 AudioMixer로 볼륨을 조절한다.
+
+- 착지: `TopBlockCollider`가 `Success` 효과음을 요청
+- 파괴: `BlockInfo`가 `Fail` 효과음을 요청. 효과음 재생 중이면 볼륨 인자를 0.4로 낮춤
+- 씬별 음악: [SceneBGMInitialize][bgm]는 이전·현재 빌드 인덱스가 모두 1 이하이면 음악을 유지하고, 그 외에는 설정된 BGM을 요청
+- 버튼 전환: [SceneButton][button]은 효과음 재생에 성공하면 클립 길이 × 배율만큼 기다린 뒤 연결된 `ChangeScenes.Load`를 호출. 재생에 실패하면 대기 없이 전환 진행
+
+## 6. 실행 전제와 검증 범위
+
+- 생성기는 이동 속도만 설정한다. `IsMoving`을 켜는 C# 코드는 없으므로 이동형 프리팹의 초기값이 필요하다. 튜토리얼·UI·Rigidbody2D·MainBlock·카메라·오디오 참조도 제외된 씬과 Inspector 설정에 의존한다.
+- [Timer][timer]는 활성 상태에서 처음부터 시간을 더한다. 생성기의 튜토리얼 대기와 타이머 시작은 직접 연결되어 있지 않다.
+- 공개 C# 28개를 정적으로 검토했다. 그림의 관계·분기와 본문의 호출 순서를 코드와 대조했으며, Unity 실행·컴파일·플레이 테스트는 하지 않았다.
 
 ## 부록. 공개 범위·출처·검증 기록
 
@@ -164,11 +156,15 @@ sequenceDiagram
 
 [에디터 버전](ReviewContext/ProjectSettings/ProjectVersion.txt)은 Unity 2022.3.7f1(revision `b16b3b16c7a0`)이다. [패키지 선언](ReviewContext/Packages/manifest.json)과 최초 감사 기록에는 TMP 3.0.6, Visual Scripting 1.9.4, Test Framework 1.1.33 등이 남아 있다. 선언 버전과 잠금 버전은 [VALIDATION.json](VALIDATION.json)의 `package_version_audit.packages`에 구분되어 있다. 설치·실행 검증을 뜻하지 않는다. 제외한 TMP 자산이나 음원·폰트 등의 개별 배포 버전은 확인되지 않았다. 최초 감사에서 DOTween/Pro의 포함·설치 버전 근거도 발견되지 않았다.
 
+일부 원본 파일은 UTF-8이 아니다. 도구나 에디터에서 한글 주석이 깨져 보일 수 있으며, 이 문서 작업에서는 소스 인코딩·개행·코드를 바꾸지 않았다.
+
 ### 기여·권한·라이선스
 
 사용자는 2026-10-01 KST에 팀원들이 현재 코드와 이름의 새 공개 저장소 게시에 동의했고 외부 차용 코드가 없다고 확인했다. 이는 사용자 확인 기록이며, 독립적인 법적 검증이나 파일 전체의 단독 저작 증명은 아니다. **새로운 라이선스를 부여하지 않는다.**
 
 [CONTRIBUTIONS.md](CONTRIBUTIONS.md)는 main 31개 커밋·5개 브랜치·고유 37개 커밋의 기존 감사 결과를 정리한다. 커밋 수 29:2를 개인 기여율로 환산하지 않는다. 공동 수정, 초기 작성자 미확인, 수동 통합 기록을 유지한다. 이 문서의 원본 커밋 링크는 비공개 원본 접근 권한이 필요하다.
+
+`PlayableMove.cs`와 `StageManager.cs`는 공동 수정 파일이다. UI·메뉴·시스템 반입 커밋의 작성자만으로 초기 구현자를 확정하지 않는다. 개인 담당과 팀 전체 구조는 기여 기록에서 구분한다.
 
 ### 과거 해시와 이번 문서 검증의 구분
 
@@ -179,3 +175,25 @@ sequenceDiagram
 이번 설명은 공개 소스를 정적으로 추적하고 문서의 파일 링크와 다이어그램 연결을 점검한 결과다. Unity 플레이·빌드·테스트 통과를 주장하지 않는다. `.gitignore`는 허용 목록일 뿐 보안 경계가 아니며, 새 파일 공개 시 별도의 출처·비밀정보 검토가 필요하다.
 
 </details>
+
+[spawner]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Spawn/BuildingSpawner.cs#L49-L145
+[move]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/PlayableMove.cs#L23-L108
+[top]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/TopBlockCollider.cs#L13-L74
+[collider]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/BlockCollider.cs#L27-L64
+[side]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/SideBlockCollider.cs
+[bottom]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/BottomBlockCollider.cs
+[blocks]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/BlockManager.cs#L15-L66
+[stage]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/StageManager.cs#L23-L58
+[ui]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/InGameUI.cs
+[game]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/System/GameManager.cs#L33-L63
+[lock]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/System/LevelLock.cs#L47-L118
+[best]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/BestTimeMenu.cs#L8-L31
+[camera]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/CameraController.cs#L34-L54
+[destroy]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/DestroyBlock.cs
+[info]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Block/BlockInfo.cs
+[background]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/BackgroundFollowing.cs
+[reflect]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/ReflectBlock.cs
+[sound]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/SoundManager.cs
+[bgm]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/etc_/SceneBGMInitialize.cs
+[button]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/Button/SceneButton.cs
+[timer]: https://github.com/als79gur49/2024_3D_TeamProject-code-portfolio/blob/fde125f042c314789e773753240ec0b3f8e4473a/Assets/Scripts/System/Timer.cs
